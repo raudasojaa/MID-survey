@@ -77,9 +77,14 @@ async function saveS(survey){
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(survey)
     });
+    if(!res.ok){
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to save survey');
+    }
     return await res.json();
   }catch(e){
-    console.error(e);
+    console.error('Error saving survey:', e);
+    throw e;
   }
 }
 
@@ -546,11 +551,16 @@ export default function App(){
   },[surveys]);
 
   const save=async(s)=>{
-    await saveS(s);
-    const updated = await loadS();
-    setSurveys(updated);
-    setView("dashboard");
-    setActive(null);
+    try{
+      await saveS(s);
+      const updated = await loadS();
+      setSurveys(updated);
+      setView("dashboard");
+      setActive(null);
+    }catch(error){
+      alert(`Error saving survey: ${error.message}\n\nMake sure you've connected Vercel KV database in your Vercel project settings.`);
+      console.error('Save error:', error);
+    }
   };
 
   const del=async(id)=>{
