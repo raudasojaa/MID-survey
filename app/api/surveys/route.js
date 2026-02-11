@@ -1,9 +1,15 @@
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
 const SURVEYS_KEY = 'mid-surveys-v3';
+
+// Create KV client with explicit configuration
+const kv = createClient({
+  url: process.env.KV_REST_API_URL || process.env.REDIS_URL,
+  token: process.env.KV_REST_API_TOKEN || process.env.REDIS_PASSWORD || '',
+});
 
 // GET all surveys
 export async function GET() {
