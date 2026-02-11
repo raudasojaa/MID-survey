@@ -22,10 +22,12 @@ export async function POST(request) {
     console.log('POST /api/surveys - Starting');
 
     // Check if KV is configured
-    if (!process.env.KV_REST_API_URL) {
-      console.error('KV_REST_API_URL is not set');
+    if (!process.env.KV_REST_API_URL && !process.env.REDIS_URL) {
+      console.error('Neither KV_REST_API_URL nor REDIS_URL is set');
       return NextResponse.json({ error: 'KV database not configured. Please connect Vercel KV in project settings.' }, { status: 500 });
     }
+
+    console.log('KV configured with:', process.env.REDIS_URL ? 'REDIS_URL' : 'KV_REST_API_URL');
 
     const survey = await request.json();
     console.log('Survey data received:', { id: survey.id, title: survey.title });
