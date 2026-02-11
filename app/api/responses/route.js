@@ -1,6 +1,8 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 // GET responses for a survey
 export async function GET(request) {
   try {

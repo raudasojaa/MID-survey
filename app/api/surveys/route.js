@@ -1,6 +1,8 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 const SURVEYS_KEY = 'mid-surveys-v3';
 
 // GET all surveys
@@ -17,10 +19,21 @@ export async function GET() {
 // POST create/update survey
 export async function POST(request) {
   try {
+    console.log('POST /api/surveys - Starting');
+
+    // Check if KV is configured
+    if (!process.env.KV_REST_API_URL) {
+      console.error('KV_REST_API_URL is not set');
+      return NextResponse.json({ error: 'KV database not configured. Please connect Vercel KV in project settings.' }, { status: 500 });
+    }
+
     const survey = await request.json();
+    console.log('Survey data received:', { id: survey.id, title: survey.title });
 
     // Get existing surveys
+    console.log('Fetching existing surveys from KV...');
     const surveys = await kv.get(SURVEYS_KEY) || [];
+    console.log('Existing surveys count:', surveys.length);
 
     // Find if survey exists
     const existingIndex = surveys.findIndex(s => s.id === survey.id);
@@ -28,18 +41,27 @@ export async function POST(request) {
     if (existingIndex >= 0) {
       // Update existing survey
       surveys[existingIndex] = survey;
+      console.log('Updating existing survey at index:', existingIndex);
     } else {
       // Add new survey
       surveys.push(survey);
+      console.log('Adding new survey');
     }
 
     // Save back to KV
+    console.log('Saving to KV...');
     await kv.set(SURVEYS_KEY, surveys);
+    console.log('Successfully saved to KV');
 
     return NextResponse.json(survey);
   } catch (error) {
     console.error('Error saving survey:', error);
-    return NextResponse.json({ error: 'Failed to save survey' }, { status: 500 });
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+    return NextResponse.json({
+      error: 'Failed to save survey',
+      details: error.message
+    }, { status: 500 });
   }
 }
 
