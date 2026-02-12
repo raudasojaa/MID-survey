@@ -370,7 +370,18 @@ function SurveyForm({survey,onComplete,isPreview}){
   const[shuffled,setShuffled]=useState([]);
   const ti=OBJ_TYPES[survey.objectiveType];
 
-  useEffect(()=>{setShuffled([...survey.scenarios].sort(()=>Math.random()-0.5));},[survey]);
+  useEffect(()=>{
+    // Sort scenarios by magnitude (smallest to largest)
+    const sorted = [...survey.scenarios].sort((a,b)=>a.magnitude-b.magnitude);
+    // Alternate between smallest and highest: [smallest, highest, 2nd smallest, 2nd highest, ...]
+    const alternating = [];
+    let left = 0, right = sorted.length - 1;
+    while(left <= right){
+      alternating.push(sorted[left++]);
+      if(left <= right) alternating.push(sorted[right--]);
+    }
+    setShuffled(alternating);
+  },[survey]);
 
   const total=shuffled.length+2;
   const isIntro=step===0,isName=step===shuffled.length+1,isDone=step===total;
