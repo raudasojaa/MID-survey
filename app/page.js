@@ -401,7 +401,7 @@ function SurveyForm({survey,onComplete,isPreview}){
       <p style={{fontFamily:font,color:C.textMid,fontSize:15,maxWidth:460,margin:"12px auto 24px",lineHeight:1.6}}>
         {isPreview?"This is how the survey looks to respondents.":"Your responses have been recorded. The results will be presented at the panel meeting."}
       </p>
-      {onComplete&&<Btn onClick={onComplete}>← Back</Btn>}
+      {isPreview&&onComplete&&<Btn onClick={onComplete}>← Back</Btn>}
     </div>
   );
 
@@ -477,11 +477,39 @@ function Results({survey,onBack}){
     return{sc,counts,tot,med};
   });
 
+  const downloadExcel=()=>{
+    const rows=[];
+    rows.push([`Tulokset: ${survey.title}`]);
+    rows.push([`Vastauksia yhteensä: ${responses.length}`]);
+    rows.push([]);
+    rows.push(["YHTEENVETO"]);
+    rows.push(["Skenaario","Vastausvaihtoehto","Lukumäärä","Prosentti","Mediaani"]);
+    summary.forEach(({sc,counts,tot,med})=>{
+      ti.opts.forEach((opt,i)=>{
+        const pct=tot>0?Math.round((counts[i]/tot)*100):0;
+        rows.push([`${sc.magnitude} / 1000`,opt,counts[i],`${pct}%`,i===med?"Mediaani":""]);
+      });
+      rows.push([]);
+    });
+    rows.push(["YKSITTÄISET VASTAUKSET"]);
+    rows.push(["Vastaaja",...survey.scenarios.map(sc=>`${sc.magnitude}/1000`)]);
+    responses.forEach(r=>{
+      rows.push([r.respondentName,...survey.scenarios.map(sc=>{const a=r.answers[sc.id];return a!==undefined?a+1:"";})]);
+    });
+    const csv=rows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=`${survey.title.replace(/[^a-z0-9]/gi,"_")}_tulokset.csv`;
+    a.click();URL.revokeObjectURL(url);
+  };
+
   return(
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
         <Btn variant="ghost" small onClick={onBack}>← Back</Btn>
-        <h2 style={{fontFamily:serif,fontSize:26,color:C.text,margin:0}}>Results: {survey.title}</h2>
+        <h2 style={{fontFamily:serif,fontSize:26,color:C.text,margin:0,flex:1}}>Results: {survey.title}</h2>
+        {responses.length>0&&<Btn variant="ghost" small onClick={downloadExcel}>⬇ Lataa Excel</Btn>}
       </div>
       <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}><Tag>{ti.label}</Tag><Tag color="#7B68EE" bg="#F0EDFF">{responses.length} responses</Tag></div>
       <div style={{marginBottom:24}}><ShareLink surveyId={survey.id}/></div>
@@ -590,7 +618,7 @@ export default function App(){
       <style>{`*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{background:${C.bg}}::selection{background:${C.accentLight};color:${C.accentDark}}input:focus,textarea:focus,select:focus{border-color:${C.accent}!important;outline:none}`}</style>
 
       <header style={{borderBottom:`1px solid ${C.border}`,background:C.card,padding:"14px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>{go("dashboard");window.location.hash="";}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,cursor:view==="respond"?"default":"pointer"}} onClick={view==="respond"?undefined:()=>{go("dashboard");window.location.hash="";}}>
           <div style={{width:32,height:32,borderRadius:8,background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:15,fontFamily:serif}}>M</div>
           <span style={{fontFamily:serif,fontSize:18,color:C.text}}>MID Panel Survey</span>
         </div>
