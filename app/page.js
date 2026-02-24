@@ -244,6 +244,7 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
   const[harm,setHarm]=useState(existingSurvey?.harmInfo||"");
   const[scenarios,setSc]=useState(existingSurvey?.scenarios||[]);
   const[addMag,setAddMag]=useState("");
+  const setSortedSc=v=>setSc(typeof v==="function"?prev=>[...v(prev)].sort((a,b)=>a.magnitude-b.magnitude):[...v].sort((a,b)=>a.magnitude-b.magnitude));
 
   useEffect(()=>{
     if(scenarios.length>0&&oc){setSc(p=>p.map(s=>({...s,autoDescription:autoDesc(ot,oc,s.magnitude,tp)})));}
@@ -279,7 +280,15 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
         </Card>
       </div>
 
-      <ScenarioGen objectiveType={ot} outcome={oc} timePeriod={tp} onGenerate={setSc} existing={scenarios}/>
+      <ScenarioGen objectiveType={ot} outcome={oc} timePeriod={tp} onGenerate={setSortedSc} existing={scenarios}/>
+
+      <Card style={{marginBottom:20,background:"#FAFAF7"}}>
+        <h4 style={{fontFamily:serif,fontSize:16,color:C.accent,margin:"0 0 12px"}}>Add Single Scenario</h4>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"end"}}>
+          <Inp label="Magnitude (per 1000)" value={addMag} onChange={setAddMag} type="number" placeholder="e.g. 15" suffix="in 1000" style={{marginBottom:0}}/>
+          <div style={{paddingBottom:14}}><Btn small disabled={!addMag} onClick={()=>{const mag=parseFloat(addMag);if(isNaN(mag))return;setSortedSc(s=>[...s,{id:uid(),magnitude:mag,autoDescription:autoDesc(ot,oc||"the outcome",mag,tp)}]);setAddMag("");}}>+ Add</Btn></div>
+        </div>
+      </Card>
 
       <Card style={{marginBottom:20,background:"#FAFAF7"}}>
         <h4 style={{fontFamily:serif,fontSize:16,color:C.accent,margin:"0 0 12px"}}>Add Single Scenario</h4>
@@ -356,7 +365,7 @@ function SurveyCard({survey:s,onEdit,onDelete,onResults,onPreview}){
           <h3 style={{fontFamily:serif,fontSize:20,color:C.text,margin:"0 0 6px"}}>{s.title}</h3>
           <p style={{fontFamily:font,fontSize:13,color:C.textMid,margin:0,lineHeight:1.5}}>
             <strong>Population:</strong> {s.population} · <strong>Outcome:</strong> {s.outcome}
-            {s.scenarios.length>0&&<> · <strong>Range:</strong> {s.scenarios[0].magnitude}–{s.scenarios[s.scenarios.length-1].magnitude} in 1000</>}
+            {s.scenarios.length>0&&<> · <strong>Range:</strong> {Math.min(...s.scenarios.map(x=>x.magnitude))}–{Math.max(...s.scenarios.map(x=>x.magnitude))} in 1000</>}
           </p>
         </div>
         <div style={{display:"flex",gap:8,flexShrink:0,marginLeft:16,flexWrap:"wrap",justifyContent:"flex-end"}}>
