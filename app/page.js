@@ -54,8 +54,8 @@ function autoDesc(type,outcome,mag,tp){
 
 function questionText(survey,sc){
   const{objectiveType:t,population:p,intervention:iv}=survey;
-  if(t==="MID") return`In ${p.toLowerCase()}, ${sc.autoDescription}. Please choose an option that reflects the proportion of patients who would consider this reduction in risk an important or trivial effect.`;
-  if(t==="DECISION") return`For ${p.toLowerCase()}, how would patients view the trade-off between benefits and harms of ${iv.toLowerCase()}?`;
+  if(t==="MID") return`In ${p.toLowerCase()}, ${sc.autoDescription}. Please choose an option that reflects the proportion of patients who would consider this reduction in risk an at least minimally important or trivial effect. Minimally important difference refers to the smallest difference in the outcome of interest that informed patients or informed proxies perceive as important.`;
+  if(t==="DECISION") return`For ${p.toLowerCase()}, how would patients view the trade-off between benefits and harms${iv?` of ${iv.toLowerCase()}`:""}?`;
   return`For ${p.toLowerCase()}, how would patients view the following effects?`;
 }
 
@@ -193,7 +193,7 @@ function ShareLink({surveyId}){
 function ScenarioGen({objectiveType,outcome,timePeriod,onGenerate,existing}){
   const[min,setMin]=useState(""); const[max,setMax]=useState(""); const[preview,setPrev]=useState(null);
   const doPrev=()=>{const lo=parseFloat(min),hi=parseFloat(max);if(isNaN(lo)||isNaN(hi)||lo<0||hi<0)return;setPrev(genValues(lo,hi,6));};
-  const doConfirm=()=>{if(!preview)return;onGenerate(preview.map(v=>({id:uid(),magnitude:v,autoDescription:autoDesc(objectiveType,outcome||"the outcome",v,timePeriod)})));setPrev(null);};
+  const doConfirm=(append=false)=>{if(!preview)return;const newScs=preview.map(v=>({id:uid(),magnitude:v,autoDescription:autoDesc(objectiveType,outcome||"the outcome",v,timePeriod)}));if(append){onGenerate(prev=>[...prev,...newScs]);}else{onGenerate(newScs);}setPrev(null);};
   useEffect(()=>{setPrev(null);},[min,max]);
 
   return(
@@ -216,7 +216,8 @@ function ScenarioGen({objectiveType,outcome,timePeriod,onGenerate,existing}){
           </div>
           <div style={{marginTop:12,display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn small variant="secondary" onClick={()=>setPrev(null)}>Cancel</Btn>
-            <Btn small onClick={doConfirm}>{existing?.length>0?"Replace Existing":"Generate Scenarios"}</Btn>
+            {existing?.length>0&&<Btn small variant="secondary" onClick={()=>doConfirm(true)}>Add to Existing</Btn>}
+            <Btn small onClick={()=>doConfirm(false)}>{existing?.length>0?"Replace Existing":"Generate Scenarios"}</Btn>
           </div>
         </div>
       )}
@@ -237,19 +238,19 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
   const[title,setTitle]=useState(existingSurvey?.title||"");
   const[ot,setOt]=useState(existingSurvey?.objectiveType||"MID");
   const[pop,setPop]=useState(existingSurvey?.population||"");
-  const[iv,setIv]=useState(existingSurvey?.intervention||"");
   const[oc,setOc]=useState(existingSurvey?.outcome||"");
   const[tp,setTp]=useState(existingSurvey?.timePeriod||"");
   const[intro,setIntro]=useState(existingSurvey?.introText||"");
   const[harm,setHarm]=useState(existingSurvey?.harmInfo||"");
   const[scenarios,setSc]=useState(existingSurvey?.scenarios||[]);
+  const[addMag,setAddMag]=useState("");
 
   useEffect(()=>{
     if(scenarios.length>0&&oc){setSc(p=>p.map(s=>({...s,autoDescription:autoDesc(ot,oc,s.magnitude,tp)})));}
   },[oc,tp,ot]);
 
-  const valid=title&&pop&&iv&&oc&&scenarios.length>0;
-  const save=()=>onSave({id:existingSurvey?.id||uid(),title,objectiveType:ot,population:pop,intervention:iv,outcome:oc,timePeriod:tp,introText:intro,harmInfo:harm,scenarios,createdAt:existingSurvey?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
+  const valid=title&&pop&&oc&&scenarios.length>0;
+  const save=()=>onSave({id:existingSurvey?.id||uid(),title,objectiveType:ot,population:pop,outcome:oc,timePeriod:tp,introText:intro,harmInfo:harm,scenarios,createdAt:existingSurvey?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
 
   return(
     <div>
@@ -264,7 +265,6 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
           <Sel label="Survey objective type" value={ot} onChange={v=>{setOt(v);setSc([]);}} options={Object.values(OBJ_TYPES).map(t=>({v:t.id,l:`${t.label} – ${t.desc.substring(0,55)}…`}))}/>
           <div style={{padding:"10px 14px",borderRadius:8,background:C.accentLight,marginBottom:14,fontSize:13,color:C.accentDark,fontFamily:font,lineHeight:1.5}}>{OBJ_TYPES[ot].desc}</div>
           <Inp label="Target population" value={pop} onChange={setPop} placeholder="e.g. Adults with risk of myocardial infarction"/>
-          <Inp label="Intervention and comparison" value={iv} onChange={setIv} placeholder="e.g. Medication vs. no medication"/>
           <Inp label="Key outcome" value={oc} onChange={setOc} placeholder="e.g. Myocardial infarction"/>
           <Inp label="Time period (optional)" value={tp} onChange={setTp} placeholder="e.g. over a period of 5 years"/>
         </Card>
@@ -280,6 +280,14 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
       </div>
 
       <ScenarioGen objectiveType={ot} outcome={oc} timePeriod={tp} onGenerate={setSc} existing={scenarios}/>
+
+      <Card style={{marginBottom:20,background:"#FAFAF7"}}>
+        <h4 style={{fontFamily:serif,fontSize:16,color:C.accent,margin:"0 0 12px"}}>Add Single Scenario</h4>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"end"}}>
+          <Inp label="Magnitude (per 1000)" value={addMag} onChange={setAddMag} type="number" placeholder="e.g. 15" suffix="in 1000" style={{marginBottom:0}}/>
+          <div style={{paddingBottom:14}}><Btn small disabled={!addMag} onClick={()=>{const mag=parseFloat(addMag);if(isNaN(mag))return;setSc(s=>[...s,{id:uid(),magnitude:mag,autoDescription:autoDesc(ot,oc||"the outcome",mag,tp)}]);setAddMag("");}}>+ Add</Btn></div>
+        </div>
+      </Card>
 
       {scenarios.length>0&&(
         <Card style={{marginBottom:20}}>
@@ -418,7 +426,7 @@ function SurveyForm({survey,onComplete,isPreview}){
           <h2 style={{fontFamily:serif,fontSize:26,color:C.text,margin:"16px 0 12px"}}>{survey.title}</h2>
           <div style={{borderLeft:`3px solid ${C.accent}`,paddingLeft:16,marginBottom:20}}>
             <p style={{fontFamily:font,fontSize:14,color:C.textMid,lineHeight:1.7,margin:0}}>
-              <strong>Population:</strong> {survey.population}<br/><strong>Intervention:</strong> {survey.intervention}<br/><strong>Key outcome:</strong> {survey.outcome}
+              <strong>Population:</strong> {survey.population}<br/><strong>Key outcome:</strong> {survey.outcome}
               {survey.timePeriod&&<><br/><strong>Time period:</strong> {survey.timePeriod}</>}
             </p>
           </div>
