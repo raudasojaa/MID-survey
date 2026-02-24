@@ -242,7 +242,7 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
   const[tp,setTp]=useState(existingSurvey?.timePeriod||"");
   const[intro,setIntro]=useState(existingSurvey?.introText||"");
   const[harm,setHarm]=useState(existingSurvey?.harmInfo||"");
-  const[scenarios,setSc]=useState(existingSurvey?.scenarios||[]);
+  const[scenarios,setSc]=useState([...(existingSurvey?.scenarios||[])].sort((a,b)=>a.magnitude-b.magnitude));
   const[addMag,setAddMag]=useState("");
   const setSortedSc=v=>setSc(typeof v==="function"?prev=>[...v(prev)].sort((a,b)=>a.magnitude-b.magnitude):[...v].sort((a,b)=>a.magnitude-b.magnitude));
 
@@ -287,14 +287,6 @@ function SurveyBuilder({existingSurvey,onSave,onCancel}){
         <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"end"}}>
           <Inp label="Magnitude (per 1000)" value={addMag} onChange={setAddMag} type="number" placeholder="e.g. 15" suffix="in 1000" style={{marginBottom:0}}/>
           <div style={{paddingBottom:14}}><Btn small disabled={!addMag} onClick={()=>{const mag=parseFloat(addMag);if(isNaN(mag))return;setSortedSc(s=>[...s,{id:uid(),magnitude:mag,autoDescription:autoDesc(ot,oc||"the outcome",mag,tp)}]);setAddMag("");}}>+ Add</Btn></div>
-        </div>
-      </Card>
-
-      <Card style={{marginBottom:20,background:"#FAFAF7"}}>
-        <h4 style={{fontFamily:serif,fontSize:16,color:C.accent,margin:"0 0 12px"}}>Add Single Scenario</h4>
-        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"end"}}>
-          <Inp label="Magnitude (per 1000)" value={addMag} onChange={setAddMag} type="number" placeholder="e.g. 15" suffix="in 1000" style={{marginBottom:0}}/>
-          <div style={{paddingBottom:14}}><Btn small disabled={!addMag} onClick={()=>{const mag=parseFloat(addMag);if(isNaN(mag))return;setSc(s=>[...s,{id:uid(),magnitude:mag,autoDescription:autoDesc(ot,oc||"the outcome",mag,tp)}]);setAddMag("");}}>+ Add</Btn></div>
         </div>
       </Card>
 
